@@ -1,0 +1,228 @@
+{smcl}
+{com}{sf}{ul off}{txt}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}C:\Users\bdnat\Documents\Harvard\Class\EPI 526 - Analysis Publicly Available Databases Epidemiologic Health Services Research\STATA\clean_2024-11-02.smcl
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res} 4 Nov 2024, 08:35:10
+{txt}
+{com}. 
+. * # Step 1 ---------------------------------------------------------------------
+. *Download all files to convert to dta.
+. 
+. * ## Demographics (DEMO) --------------------
+. import sasxport5 "https://wwwn.cdc.gov/Nchs/Nhanes/2011-2012/DEMO_G.XPT"
+{err}no; dataset in memory has changed since last saved
+{txt}{search r(4), local:r(4);}
+
+end of do-file
+
+{search r(4), local:r(4);}
+
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. use "data/0_raw/nhanes_g.dta", clear
+{txt}
+{com}. append using "data/0_raw/nhanes_h.dta"
+{txt}
+{com}. append using "data/0_raw/nhanes_i.dta"
+{txt}
+{com}. append using "data/0_raw/nhanes_j.dta"
+{txt}
+{com}. 
+. * # Step 4 ---------------------------------------------------------------------
+. *Double-check outcome of cancer by cross referencing with data dictionary
+. * mcq220 value of "1" should be 488 + 547 + 549 + 588 = 2172
+. tab sddsrvyr mcq220 /* looking good */
+
+      {txt}Data {c |}
+   release {c |}   Ever told you had cancer or malignancy
+     cycle {c |}         1          2          7          9 {c |}     Total
+{hline 11}{c +}{hline 44}{c +}{hline 10}
+         7 {c |}{res}       488      5,066          1          4 {txt}{c |}{res}     5,559 
+{txt}         8 {c |}{res}       547      5,222          0          0 {txt}{c |}{res}     5,769 
+{txt}         9 {c |}{res}       549      5,165          0          5 {txt}{c |}{res}     5,719 
+{txt}        10 {c |}{res}       588      4,979          0          2 {txt}{c |}{res}     5,569 
+{txt}{hline 11}{c +}{hline 44}{c +}{hline 10}
+     Total {c |}{res}     2,172     20,432          1         11 {txt}{c |}{res}    22,616 
+{txt}
+{com}. 
+. * # Step 5 ---------------------------------------------------------------------
+. *Apply exclusion/inclusion criteria
+. 
+. *Only include individuals who answer "Yes" or "No" to "{c -(}Have you/Has SP{c )-} ever 
+. *been told by a doctor or other health professional that {c -(}you/s/he{c )-} had cancer
+. *or a malignancy (ma-lig-nan-see) of any kind?"
+. keep if mcq220 == 1 | mcq220 == 2
+{txt}(16,552 observations deleted)
+
+{com}. 
+. *Only include individuals between the ages of 20 - 79 since ages past 80 are
+. *truncated.
+. drop if ridageyr >= 80
+{txt}(1,517 observations deleted)
+
+{com}. 
+. *Include individuals who were not pregnant at exam. The variable only applies
+. *to females 20-44 years.
+. drop if ridexprg != 2 & riagendr == 2 & ridageyr <= 44 
+{txt}(608 observations deleted)
+
+{com}. 
+{txt}end of do-file
+
+{com}. _n
+{err}command {bf}_n{sf} is unrecognized
+{txt}{search r(199), local:r(199);}
+
+{com}. tab mcq220
+
+  {txt}Ever told {c |}
+    you had {c |}
+  cancer or {c |}
+ malignancy {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          1 {c |}{res}      1,685        8.23        8.23
+{txt}          2 {c |}{res}     18,794       91.77      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}     20,479      100.00
+
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. replace paq610 = 0 if paq605 != 1 /* vigorous occupation PA days */
+{txt}(16,237 real changes made)
+
+{com}. replace pad615 = 0 if paq605 != 1 /* vigorous occupation PA mins/day */
+{txt}(16,237 real changes made)
+
+{com}. replace paq625 = 0 if paq620 != 1 /* moderate occupation PA days */
+{txt}(12,936 real changes made)
+
+{com}. replace pad630 = 0 if paq620 != 1 /* moderate occupation PA mins/day */
+{txt}(12,936 real changes made)
+
+{com}. 
+. 
+. *Transportation
+. replace paq640 = 0 if paq635 != 1 /* transportation PA days */
+{txt}(15,089 real changes made)
+
+{com}. replace pad645 = 0 if paq635 != 1 /* transportation PA mins/day */
+{txt}(15,089 real changes made)
+
+{com}. 
+. *Leisure
+. replace paq655 = 0 if paq650 != 1 /* vigorous leisure PA days */
+{txt}(15,491 real changes made)
+
+{com}. replace pad660 = 0 if paq650 != 1 /* vigorous leisure PA mins/day */
+{txt}(15,491 real changes made)
+
+{com}. replace paq670 = 0 if paq665 != 1 /* moderate leisure PA days */
+{txt}(11,933 real changes made)
+
+{com}. replace pad675 = 0 if paq605 != 1 /* moderate leisure PA mins/day */
+{txt}(16,237 real changes made)
+
+{com}. 
+. *Generate variables.
+. generate metmin_opa_vig = paq610 * pad615 * 8 /*days x mins/day x 8 METs */
+{txt}(28 missing values generated)
+
+{com}. generate metmin_opa_mod = paq625 * pad630 * 4 /*days x mins/day x 4 METs */
+{txt}(36 missing values generated)
+
+{com}. generate metmin_tpa     = paq640 * pad645 * 4 /*days x mins/day x 4 METs */
+{txt}(21 missing values generated)
+
+{com}. generate metmin_lpa_vig = paq655 * pad660 * 8 /*days x mins/day x 8 METs */
+{txt}(9 missing values generated)
+
+{com}. generate metmin_lpa_mod = paq670 * pad675 * 4 /*days x mins/day x 4 METs */
+{txt}(2,392 missing values generated)
+
+{com}. 
+. generate metmin = metmin_opa_vig + metmin_opa_mod + metmin_tpa + metmin_lpa_vig + metmin_lpa_mod
+{txt}(2,410 missing values generated)
+
+{com}. 
+{txt}end of do-file
+
+{com}. hist metmin
+{txt}(bin={res}42{txt}, start={res}0{txt}, width={res}9711.4286{txt})
+{res}
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. generate smoke = .
+{txt}(20,479 missing values generated)
+
+{com}.         replace smoke = 0 if smq020 == 0 /* answered "No" to "Have you ever smoked 
+>                                                                                 at least 100 cigarettes in life?" */
+{txt}(0 real changes made)
+
+{com}.         replace smoke = 1 if smq020 == 1 /* answered "Yes" to "Have you ever smoked 
+>                                                                                 at least 100 cigarettes in life?" */
+{txt}(8,776 real changes made)
+
+{com}.         replace smoke = 2 if smq040 == 1 | smq040 == 2 /* answered "Every day" or
+>                                                                                                           "Some days" to "Do you now
+>                                                                                                           smoke cigarettes?" */
+{txt}(4,214 real changes made)
+
+{com}. 
+{txt}end of do-file
+
+{com}. tab smoke
+
+      {txt}smoke {c |}      Freq.     Percent        Cum.
+{hline 12}{c +}{hline 35}
+          1 {c |}{res}      4,562       51.98       51.98
+{txt}          2 {c |}{res}      4,214       48.02      100.00
+{txt}{hline 12}{c +}{hline 35}
+      Total {c |}{res}      8,776      100.00
+
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. generate education = dmdeduc2
+{txt}
+{com}.         replace education = 0 if dmdeduc2 == 1 | dmdeduc2 == 2 | dmdeduc2 == 3
+{txt}(9,025 real changes made)
+
+{com}.         replace education = 1 if dmdeduc2 == 4 | dmdeduc2 == 5
+{txt}(11,438 real changes made)
+
+{com}. 
+{txt}end of do-file
+
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. save "data/1_clean/nhanes.dta"
+{err}{p 0 4 2}
+file {bf:{err}data/1_clean/nhanes.dta}
+already exists
+{p_end}
+{txt}{search r(602), local:r(602);}
+
+end of do-file
+
+{search r(602), local:r(602);}
+
+{com}. do "C:\Users\bdnat\AppData\Local\Temp\STD22144_000000.tmp"
+{txt}
+{com}. save "data/1_clean/nhanes.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+data/1_clean/nhanes.dta{rm}
+saved
+{p_end}
+
+{com}. 
+{txt}end of do-file
+
+{com}. log close
+      {txt}name:  {res}<unnamed>
+       {txt}log:  {res}C:\Users\bdnat\Documents\Harvard\Class\EPI 526 - Analysis Publicly Available Databases Epidemiologic Health Services Research\STATA\clean_2024-11-02.smcl
+  {txt}log type:  {res}smcl
+ {txt}closed on:  {res} 4 Nov 2024, 08:42:47
+{txt}{.-}
+{smcl}
+{txt}{sf}{ul off}
